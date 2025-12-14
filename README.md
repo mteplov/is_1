@@ -1,5 +1,5 @@
 
-# Домашнее задание к занятию «12-02.md Работа с данными (DDL/DML)» - Теплов Михаил 
+# Домашнее задание к занятию «12-06.md Репликация и масштабирование. Часть 1» - Теплов Михаил 
 
 ### Инструкция по выполнению домашнего задания
 
@@ -17,62 +17,118 @@
 Желаем успехов в выполнении домашнего задания.
 
 ---
-Задание можно выполнить как в любом IDE, так и в командной строке.
-
 ### Задание 1
-1.1. Поднимите чистый инстанс MySQL версии 8.0+. Можно использовать локальный сервер или контейнер Docker.
 
-1.2. Создайте учётную запись sys_temp. 
+На лекции рассматривались режимы репликации master-slave, master-master, опишите их различия.
 
-1.3. Выполните запрос на получение списка пользователей в базе данных. (скриншот)
+*Ответить в свободной форме.*
 
-1.4. Дайте все права для пользователя sys_temp. 
+### Master–Slave
 
-1.5. Выполните запрос на получение списка прав для пользователя sys_temp. (скриншот)
+В схеме master–slave есть один главный сервер и один или несколько подчинённых.
 
-1.6. Переподключитесь к базе данных от имени sys_temp.
+Главный сервер (master) — это место, куда приложение записывает данные: добавляет, изменяет и удаляет записи.
+Подчинённый сервер (slave) сам ничего не принимает на запись, он просто копирует все изменения с master и хранит у себя такую же копию данных.
 
-Для смены типа аутентификации с sha2 используйте запрос: 
-```sql
-ALTER USER 'sys_test'@'localhost' IDENTIFIED WITH mysql_native_password BY 'password';
-```
-1.6. По ссылке https://downloads.mysql.com/docs/sakila-db.zip скачайте дамп базы данных.
+Работает это так:
+master фиксирует все изменения в специальных логах, а slave регулярно забирает эти изменения и повторяет их у себя. В итоге данные на slave всегда почти такие же, как на master.
 
-1.7. Восстановите дамп в базу данных.
+Обычно slave используют для чтения — например, чтобы:
+разгрузить основной сервер
+делать отчёты
+снимать резервные копии, не трогая master
 
-1.8. При работе в IDE сформируйте ER-диаграмму получившейся базы данных. При работе в командной строке используйте команду для получения всех таблиц базы данных. (скриншот)
+Плюс такой схемы — она простая и надёжная.
+Минус — если master упадёт, писать данные будет некуда, пока вручную не назначат новый master.
 
-*Результатом работы должны быть скриншоты обозначенных заданий, а также простыня со всеми запросами.*
-Скриншот:  
-![1 задание](https://github.com/mteplov/DDL/blob/main/img/1.png)
-![1 задание](https://github.com/mteplov/DDL/blob/main/img/2.png)
-![1 задание](https://github.com/mteplov/DDL/blob/main/img/3.png)
+### Master–Master 
+
+В схеме master–master оба сервера равноправные.
+На любой из них можно писать данные, и каждый сервер передаёт свои изменения второму.
+
+Фактически каждый сервер работает сразу в двух ролях:
+ как master — принимает изменения
+как slave — получает изменения от второго сервера
+
+Это удобно, потому что:
+если один сервер упал, второй продолжает работать
+можно распределять нагрузку по записи
+
+Но такая схема сложнее:
+если одновременно изменить одни и те же данные на двух серверах, возможны конфликты
+нужно специально настраивать автоинкремент, чтобы записи не пересекались
+Поэтому master–master используют там, где важна отказоустойчивость или постоянная доступность сервиса, а не просто простота.
+
+В заключении главная разница 
+Master–Slave — один пишет, остальные копируют
+Master–Slave проще и стабильнее
+
+
+Master–Master — оба пишут и синхронизируются между собой
+Master–Master сложнее, но даёт больше гибкости и отказоустойчивости
+---
 
 ### Задание 2
-Составьте таблицу, используя любой текстовый редактор или Excel, в которой должно быть два столбца: в первом должны быть названия таблиц восстановленной базы, во втором названия первичных ключей этих таблиц. Пример: (скриншот/текст)
-```
-Название таблицы | Название первичного ключа
-customer         | customer_id
-```
-Скриншот:  
-![2 задание](https://github.com/mteplov/DDL/blob/main/img/4.png)
+
+Выполните конфигурацию master-slave репликации, примером можно пользоваться из лекции.
+
+*Приложите скриншоты конфигурации, выполнения работы: состояния и режимы работы серверов.*
+
+Скриншоты master:  
+![2 задание]((https://github.com/mteplov/SQL1/blob/main/img/z2_master/1.png)
+![2 задание]((https://github.com/mteplov/SQL1/blob/main/img/z2_master/2.png)
+![2 задание]((https://github.com/mteplov/SQL1/blob/main/img/z2_master/3.png)
+
+Конфигурационный файл master:  
+[Master](https://github.com/mteplov/SQL1/blob/main/img/z2_master/mysqld.cnf)
+
+Скриншоты slave:  
+![2 задание]((https://github.com/mteplov/SQL1/blob/main/img/z2_slave/2.1.png)
+![2 задание]((https://github.com/mteplov/SQL1/blob/main/img/z2_slave/2.2.png)
+![2 задание]((https://github.com/mteplov/SQL1/blob/main/img/z2_slave/2.3.png)
+![2 задание]((https://github.com/mteplov/SQL1/blob/main/img/z2_slave/2.4.png)
+![2 задание]((https://github.com/mteplov/SQL1/blob/main/img/z2_slave/2.5.png)
+![2 задание]((https://github.com/mteplov/SQL1/blob/main/img/z2_slave/2.6.png)
+
+
+Конфигурационный файл slave:  
+[Slave](https://github.com/mteplov/SQL1/blob/main/img/z2_slave/mysqld.cnf)
+
+---
 
 ## Дополнительные задания (со звёздочкой*)
 Эти задания дополнительные, то есть не обязательные к выполнению, и никак не повлияют на получение вами зачёта по этому домашнему заданию. Вы можете их выполнить, если хотите глубже шире разобраться в материале.
 
-### Задание 3*
-3.1. Уберите у пользователя sys_temp права на внесение, изменение и удаление данных из базы sakila.
+---
 
-3.2. Выполните запрос на получение списка прав для пользователя sys_temp. (скриншот)
+### Задание 3* 
 
-*Результатом работы должны быть скриншоты обозначенных заданий, а также простыня со всеми запросами.*
+Выполните конфигурацию master-master репликации. Произведите проверку.
 
-```sql 
-REVOKE INSERT, UPDATE, DELETE ON *.* FROM 'sys_temp'@'localhost';
-FLUSH PRIVILEGES;
-SHOW GRANTS FOR 'sys_temp'@'localhost';
-```
-Скриншот:  
-![3 задание](https://github.com/mteplov/DDL/blob/main/img/5.png)
-![3 задание](https://github.com/mteplov/DDL/blob/main/img/6.png)
+*Приложите скриншоты конфигурации, выполнения работы: состояния и режимы работы серверов.*
+
+Скриншоты master1:  
+![3 задание]((https://github.com/mteplov/SQL1/blob/main/img/z3_master1/3.1.png)
+![3 задание]((https://github.com/mteplov/SQL1/blob/main/img/z3_master1/3.2.png)
+![3 задание]((https://github.com/mteplov/SQL1/blob/main/img/z3_master1/3.3.png)
+![3 задание]((https://github.com/mteplov/SQL1/blob/main/img/z3_master1/3.4.png)
+![3 задание]((https://github.com/mteplov/SQL1/blob/main/img/z3_master1/3.5.png)
+![3 задание]((https://github.com/mteplov/SQL1/blob/main/img/z3_master1/3.6.png)
+![3 задание]((https://github.com/mteplov/SQL1/blob/main/img/z3_master1/3.7.png)
+
+Конфигурационный файл master1:  
+[Master1](https://github.com/mteplov/SQL1/blob/main/img/z3_master1/mysqld.cnf)
+
+Скриншоты master2:  
+![3 задание]((https://github.com/mteplov/SQL1/blob/main/img/z3_master2/2.1.png)
+![3 задание]((https://github.com/mteplov/SQL1/blob/main/img/z3_master2/2.2.png)
+![3 задание]((https://github.com/mteplov/SQL1/blob/main/img/z3_master2/2.3.png)
+![3 задание]((https://github.com/mteplov/SQL1/blob/main/img/z3_master2/2.4.png)
+![3 задание]((https://github.com/mteplov/SQL1/blob/main/img/z3_master2/2.5.png)
+![3 задание]((https://github.com/mteplov/SQL1/blob/main/img/z3_master2/2.6.png)
+![3 задание]((https://github.com/mteplov/SQL1/blob/main/img/z3_master2/2.7.png)
+
+Конфигурационный файл master2:  
+[Master2](https://github.com/mteplov/SQL1/blob/main/img/z3_master2/mysqld.cnf)
+
 
